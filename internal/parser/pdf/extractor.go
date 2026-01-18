@@ -383,10 +383,11 @@ func (e *Extractor) ConvertToImages(ctx context.Context, pdfData []byte) ([][]by
 	}
 
 	for _, f := range files {
-		if f.IsDir() || !strings.HasSuffix(f.Name(), ".png") {
+		name := f.Name()
+		if f.IsDir() || (!strings.HasSuffix(name, ".png") && !strings.HasSuffix(name, ".jpg") && !strings.HasSuffix(name, ".jpeg")) {
 			continue
 		}
-		imgPath := filepath.Join(tmpDir, f.Name())
+		imgPath := filepath.Join(tmpDir, name)
 		imgData, err := os.ReadFile(imgPath)
 		if err != nil {
 			continue
@@ -401,13 +402,17 @@ func (e *Extractor) ConvertToImages(ctx context.Context, pdfData []byte) ([][]by
 	return images, nil
 }
 
-// convertPDFToImages runs pdftoppm to convert PDF to PNG images
+// convertPDFToImages runs pdftoppm to convert PDF to JPEG images
+// Uses 100 DPI and JPEG compression to reduce file size and token consumption
 func convertPDFToImages(ctx context.Context, pdfPath, outputPrefix string) error {
 	// Try pdftoppm first (from poppler)
-	cmd := execCommandContext(ctx, "pdftoppm", "-png", "-r", "200", pdfPath, outputPrefix)
+	// -jpeg: Use JPEG format for smaller file size
+	// -r 100: 100 DPI is sufficient for invoice text recognition
+	// -jpegopt quality=80: Good quality/size balance
+	cmd := execCommandContext(ctx, "pdftoppm", "-jpeg", "-r", "100", "-jpegopt", "quality=80", pdfPath, outputPrefix)
 	if err := cmd.Run(); err != nil {
 		// Try convert from ImageMagick as fallback
-		cmd = execCommandContext(ctx, "convert", "-density", "200", pdfPath, outputPrefix+".png")
+		cmd = execCommandContext(ctx, "convert", "-density", "100", "-quality", "80", pdfPath, outputPrefix+".jpg")
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("pdftoppm and convert both failed: %w", err)
 		}

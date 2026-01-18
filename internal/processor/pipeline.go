@@ -210,7 +210,8 @@ func (p *Pipeline) tryLLMVisionExtraction(ctx context.Context, data []byte, mime
 		}
 		// Use first page for vision extraction
 		imageData = images[0]
-		imageMimeType = "image/png"
+		// Detect image format from magic bytes
+		imageMimeType = detectImageMimeType(imageData)
 	} else {
 		imageData = data
 		imageMimeType = mimeType
@@ -229,6 +230,24 @@ func (p *Pipeline) tryLLMVisionExtraction(ctx context.Context, data []byte, mime
 		Method:     MethodLLMVision,
 		Confidence: 0.80, // Vision slightly less reliable than text
 	}
+}
+
+// detectImageMimeType detects the MIME type of image data from magic bytes
+func detectImageMimeType(data []byte) string {
+	if len(data) >= 3 {
+		// JPEG: FF D8 FF
+		if data[0] == 0xFF && data[1] == 0xD8 && data[2] == 0xFF {
+			return "image/jpeg"
+		}
+	}
+	if len(data) >= 4 {
+		// PNG: 89 50 4E 47
+		if data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47 {
+			return "image/png"
+		}
+	}
+	// Default to JPEG since we now generate JPEG by default
+	return "image/jpeg"
 }
 
 // DetectFormat detects the invoice format from file content
