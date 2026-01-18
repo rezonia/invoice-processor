@@ -94,20 +94,28 @@ func (e *Extractor) ExtractFromOCRText(ctx context.Context, ocrText string) (*mo
 
 // LLMResponse represents the JSON structure returned by LLM
 type LLMResponse struct {
-	InvoiceNumber  string         `json:"invoice_number"`
-	Series         string         `json:"series"`
-	Date           string         `json:"date"`
-	Type           string         `json:"type"`
-	Seller         LLMParty       `json:"seller"`
-	Buyer          LLMParty       `json:"buyer"`
-	Items          []LLMLineItem  `json:"items"`
-	Subtotal       json.Number    `json:"subtotal"`
-	TotalDiscount  json.Number    `json:"total_discount"`
-	TotalVAT       json.Number    `json:"total_vat"`
-	TotalAmount    json.Number    `json:"total_amount"`
-	Currency       string         `json:"currency"`
-	PaymentMethod  string         `json:"payment_method"`
-	Notes          string         `json:"notes"`
+	InvoiceNumber  string        `json:"invoice_number"`
+	Series         string        `json:"series"`
+	Date           string        `json:"date"`
+	Type           string        `json:"type"`
+	Seller         LLMParty      `json:"seller"`
+	Buyer          LLMParty      `json:"buyer"`
+	Items          []LLMLineItem `json:"items"`
+	Subtotal       json.Number   `json:"subtotal"`
+	TotalDiscount  json.Number   `json:"total_discount"`
+	TotalVAT       json.Number   `json:"total_vat"`
+	TotalAmount    json.Number   `json:"total_amount"`
+	Currency       string        `json:"currency"`
+	PaymentMethod  string        `json:"payment_method"`
+	Notes          string        `json:"notes"`
+	// Receipt-specific fields
+	DocumentType   string      `json:"document_type"`
+	ReceiptNumber  string      `json:"receipt_number"`
+	Cashier        string      `json:"cashier"`
+	TerminalID     string      `json:"terminal_id"`
+	Time           string      `json:"time"`
+	AmountTendered json.Number `json:"amount_tendered"`
+	Change         json.Number `json:"change"`
 }
 
 // LLMParty represents a party in the LLM response
@@ -151,12 +159,26 @@ func (e *Extractor) parseResponse(response string) (*model.Invoice, error) {
 }
 
 func (e *Extractor) convertToInvoice(resp *LLMResponse) (*model.Invoice, error) {
+	// Determine document number (invoice_number takes precedence over receipt_number)
+	docNumber := resp.InvoiceNumber
+	if docNumber == "" {
+		docNumber = resp.ReceiptNumber
+	}
+
 	inv := &model.Invoice{
-		Number:       resp.InvoiceNumber,
-		Series:       resp.Series,
-		Currency:     resp.Currency,
-		Remarks:      resp.Notes,
-		Provider:     model.ProviderUnknown, // LLM doesn't identify provider
+		Number:         docNumber,
+		Series:         resp.Series,
+		Currency:       resp.Currency,
+		Remarks:        resp.Notes,
+		Provider:       model.ProviderUnknown, // LLM doesn't identify provider
+		DocumentType:   parseDocumentType(resp.DocumentType),
+		Cashier:        resp.Cashier,
+		TerminalID:     resp.TerminalID,
+		PaymentMethod:  resp.PaymentMethod,
+		ReceiptNumber:  resp.ReceiptNumber,
+		ReceiptTime:    resp.Time,
+		AmountTendered: parseDecimal(resp.AmountTendered),
+		Change:         parseDecimal(resp.Change),
 	}
 
 	// Parse date
@@ -257,6 +279,15 @@ func parseInvoiceType(s string) model.InvoiceType {
 		return model.InvoiceTypeAdjustment
 	default:
 		return model.InvoiceTypeNormal
+	}
+}
+
+func parseDocumentType(s string) model.DocumentType {
+	switch strings.ToLower(s) {
+	case "receipt":
+		return model.DocumentTypeReceipt
+	default:
+		return model.DocumentTypeInvoice
 	}
 }
 

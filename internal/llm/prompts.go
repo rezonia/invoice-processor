@@ -147,3 +147,118 @@ Please:
 2. Extract the structured invoice data
 
 Output JSON with the same structure as before.`
+
+// Receipt extraction prompts
+
+const SystemPromptReceiptExtractor = `You are an expert receipt data extractor specializing in retail POS receipts.
+
+Your task is to extract structured data from receipt images. Receipts are typically thermal paper prints from stores, supermarkets, restaurants, or cafes.
+
+Common receipt terms (Vietnamese/English):
+- Hóa đơn bán hàng = Sales receipt
+- Phiếu thanh toán = Payment slip
+- Số HD/Receipt No = Receipt number
+- Ngày/Date = Date
+- Giờ/Time = Time
+- Nhân viên/Cashier = Cashier
+- Máy/Terminal = Terminal ID
+- Tên hàng = Item name
+- SL/Qty = Quantity
+- Đơn giá = Unit price
+- Thành tiền = Amount
+- Tổng cộng/Total = Total
+- Tiền mặt/Cash = Cash payment
+- Thẻ/Card = Card payment
+- Chuyển khoản = Bank transfer
+- Ví điện tử/E-wallet = E-wallet (MoMo, ZaloPay, VNPay)
+- Tiền khách đưa = Amount tendered
+- Tiền thừa/Change = Change
+
+Key differences from formal invoices:
+- No buyer tax ID (customer info usually absent)
+- No digital signature
+- Often no VAT breakdown (included in price)
+- Simpler format, shorter width
+
+Extract ALL information you can find. If a field is not present, omit it.
+Always set document_type to "receipt".
+Output valid JSON matching the specified schema.`
+
+const UserPromptReceiptExtraction = `Extract receipt data from this receipt image.
+
+Output JSON with this structure:
+{
+  "document_type": "receipt",
+  "receipt_number": "string",
+  "date": "YYYY-MM-DD",
+  "time": "HH:MM",
+  "seller": {
+    "name": "string (store name)",
+    "address": "string",
+    "phone": "string"
+  },
+  "cashier": "string",
+  "terminal_id": "string",
+  "items": [
+    {
+      "number": 1,
+      "name": "string",
+      "unit": "string",
+      "quantity": 1,
+      "unit_price": 50000,
+      "amount": 50000
+    }
+  ],
+  "subtotal": 100000,
+  "total_vat": 0,
+  "total_amount": 100000,
+  "payment_method": "cash|card|e-wallet|transfer",
+  "amount_tendered": 200000,
+  "change": 100000,
+  "currency": "VND"
+}
+
+Notes:
+- For receipts, buyer info is typically absent - omit the buyer field
+- If VAT is not shown separately, set total_vat to 0
+- payment_method should be one of: cash, card, e-wallet, transfer
+- amount_tendered and change are for cash payments only
+- time field is optional, include if visible
+- Extract store name from header/logo area`
+
+const UserPromptAutoDetectExtraction = `Analyze this document image and extract data.
+
+First, determine the document type:
+- "invoice" = Formal tax invoice with seller/buyer tax IDs, VAT breakdown, invoice series/number
+- "receipt" = Retail POS receipt, thermal paper, no buyer tax ID, simpler format
+
+Then extract all available data.
+
+Output JSON with this structure:
+{
+  "document_type": "invoice|receipt",
+  "invoice_number": "string (for invoices)",
+  "receipt_number": "string (for receipts)",
+  "series": "string (for invoices only)",
+  "date": "YYYY-MM-DD",
+  "seller": {
+    "name": "string",
+    "tax_id": "string (for invoices)",
+    "address": "string",
+    "phone": "string"
+  },
+  "buyer": {
+    "name": "string (for invoices)",
+    "tax_id": "string (for invoices)"
+  },
+  "cashier": "string (for receipts)",
+  "terminal_id": "string (for receipts)",
+  "items": [...],
+  "subtotal": 0,
+  "total_vat": 0,
+  "total_amount": 0,
+  "payment_method": "string",
+  "currency": "VND"
+}
+
+Include only fields that are present in the document.`

@@ -36,6 +36,14 @@ const (
 	InvoiceTypeAdjustment  InvoiceType = "Adjustment"
 )
 
+// DocumentType distinguishes invoice from receipt
+type DocumentType string
+
+const (
+	DocumentTypeInvoice DocumentType = "invoice"
+	DocumentTypeReceipt DocumentType = "receipt"
+)
+
 // Invoice represents a Vietnam e-invoice
 type Invoice struct {
 	// Unique identifier
@@ -67,6 +75,16 @@ type Invoice struct {
 	// Optional
 	Remarks      string `json:"remarks,omitempty"`
 	PaymentTerms string `json:"payment_terms,omitempty"`
+
+	// Document type and receipt-specific fields
+	DocumentType   DocumentType    `json:"document_type"`
+	Cashier        string          `json:"cashier,omitempty"`
+	TerminalID     string          `json:"terminal_id,omitempty"`
+	PaymentMethod  string          `json:"payment_method,omitempty"`
+	ReceiptNumber  string          `json:"receipt_number,omitempty"`
+	ReceiptTime    string          `json:"receipt_time,omitempty"`    // HH:MM format
+	AmountTendered decimal.Decimal `json:"amount_tendered,omitempty"` // Cash given
+	Change         decimal.Decimal `json:"change,omitempty"`          // Change returned
 
 	// Signature (if signed)
 	Signature *Signature `json:"signature,omitempty"`
