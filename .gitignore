@@ -46,4 +46,6 @@ go.work
 *.prof
 debug
 
+# Test data and plans
 test/invoices
+plans/
