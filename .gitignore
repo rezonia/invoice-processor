@@ -1,0 +1,46 @@
+# Go build artifacts
+bin/
+dist/
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go test artifacts
+*.test
+*.out
+coverage.*
+*.cover
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*.iml
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+
+# OS files
+Thumbs.db
+.AppleDouble
+.LSOverride
+.DS_Store
+
+# Dependency directories (optional)
+vendor/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Go workspace file
+go.work
+
+# Miscellaneous
+*.pprof
+*.prof
+debug
