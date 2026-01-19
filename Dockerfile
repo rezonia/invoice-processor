@@ -23,7 +23,10 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 FROM alpine:3.21
 
 # Install runtime dependencies
-RUN apk add --no-cache ca-certificates tzdata
+# - ca-certificates: for HTTPS/TLS connections
+# - tzdata: for timezone support
+# - poppler-utils: provides pdfsig for PDF signature verification
+RUN apk add --no-cache ca-certificates tzdata poppler-utils
 
 # Create non-root user for security
 RUN adduser -D -u 1000 appuser

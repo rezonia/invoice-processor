@@ -7,6 +7,7 @@ A Go library for processing Vietnam e-invoices with hybrid extraction support (X
 - **Multi-Format Support**: Process XML, PDF, and image invoices
 - **Multiple Providers**: Support for TCT, VNPT, MISA, Viettel, and FPT invoice formats
 - **Hybrid Extraction Pipeline**: Template matching → OCR + LLM Text → Pure LLM Vision
+- **Digital Signature Verification**: Verify XMLDSig and PDF signatures with Vietnam CA trust store
 - **Cost-Optimized**: Falls back to more expensive methods only when needed
 - **CLI Tool**: Command-line interface for processing invoices
 - **REST API**: Gin-based HTTP server for microservice deployment
@@ -74,6 +75,15 @@ go build -o invoice-processor ./cmd/invoice-processor
 
 # Start HTTP API server
 ./invoice-processor serve --address :8080 --api-key $LLM_API_KEY
+
+# Verify digital signature
+./invoice-processor verify invoice.xml
+
+# Verify with custom CA certificate
+./invoice-processor verify --ca-file custom-ca.crt invoice.xml
+
+# Skip OCSP revocation check
+./invoice-processor verify --skip-ocsp invoice.pdf
 ```
 
 ### REST API
@@ -101,6 +111,11 @@ curl -X POST http://localhost:8080/api/v1/validate \
 # Get file info
 curl -X POST http://localhost:8080/api/v1/info \
   --data-binary @invoice.pdf
+
+# Verify digital signature
+curl -X POST http://localhost:8080/api/v1/verify \
+  -H "Content-Type: application/xml" \
+  --data-binary @invoice.xml
 ```
 
 ## API Endpoints
@@ -114,6 +129,7 @@ curl -X POST http://localhost:8080/api/v1/info \
 | POST | `/api/v1/process/auto` | Auto-detect format and process |
 | POST | `/api/v1/validate` | Validate invoice (XML only) |
 | POST | `/api/v1/info` | Get file format information |
+| POST | `/api/v1/verify` | Verify digital signature |
 
 ## Supported Invoice Providers
 
@@ -237,7 +253,11 @@ opts := invoicelib.PipelineOptions{
 │   │   ├── pdf/             # PDF extraction
 │   │   └── xml/             # XML adapters
 │   ├── processor/           # Hybrid extraction pipeline
-│   └── server/              # Gin HTTP server
+│   ├── server/              # Gin HTTP server
+│   └── signature/           # Digital signature verification
+│       ├── pdf/             # PDF signature (pdfsig wrapper)
+│       ├── trust/           # Vietnam CA trust store
+│       └── xml/             # XMLDSig verification
 └── pkg/
     └── invoicelib/          # Public API
 ```
@@ -318,6 +338,28 @@ services:
 - Go 1.23+
 - Docker (optional, for containerized deployment)
 - (Optional) protoc for gRPC code generation
+- (Optional) pdfsig for PDF signature verification
+
+#### Installing pdfsig
+
+PDF signature verification requires `pdfsig` from poppler-utils:
+
+```bash
+# macOS
+brew install poppler
+
+# Ubuntu/Debian
+sudo apt-get install poppler-utils
+
+# Alpine Linux (Docker)
+apk add poppler-utils
+
+# Fedora/RHEL
+sudo dnf install poppler-utils
+```
+
+> **Note:** XML signature verification works without any external dependencies (pure Go).
+> PDF signature verification gracefully falls back to "unavailable" if pdfsig is not installed.
 
 ### Build
 
